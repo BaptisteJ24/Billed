@@ -63,7 +63,21 @@ const mockedBills = {
 
   },
   create(bill) {
-    return Promise.resolve({fileUrl: 'https://localhost:3456/images/test.jpg', key: '1234'})
+    return Promise.resolve({
+      "type": bill.type,
+      "name": bill.name,
+      "date": bill.date,
+      "amount": bill.amount,
+      "vat": bill.vat,
+      "pct": bill.pct,
+      "commentary": bill.commentary,
+      "fileName": bill.fileUrl,
+      "fileUrl": bill.fileUrl, 
+      "id": '1234',
+      "email": bill.email,
+      "status": bill.status,
+      "commentAdmin": "",
+    })
   },
   update(bill) {
     return Promise.resolve({

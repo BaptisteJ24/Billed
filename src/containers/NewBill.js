@@ -19,12 +19,12 @@ export default class NewBill {
 
   handleChangeFile = e => {
     e.preventDefault()
-    const file = this.file.files[0]
+    let fileInput = this.file
+    let file = fileInput.files[0]
     const filePath = e.target.value.split(/\\/g)
     const fileName = filePath[filePath.length - 1]
     const acceptedTypes = ['image/jpg', 'image/jpeg', 'image/png']
-
-    let isTypeValid = acceptedTypes.includes(file.type) ? true : false
+    let isTypeValid = acceptedTypes.includes(file.type)
 
     const formData = new FormData()
     const email = JSON.parse(localStorage.getItem("user")).email
@@ -45,7 +45,8 @@ export default class NewBill {
           this.fileName = fileName
         }
         else {
-          this.file.value = null
+          fileInput.value = null
+          file = {}
           this.billId = null
           alert("Le format du fichier n'est pas valide. Veuillez sélectionner un fichier au format jpg, jpeg ou png.")
         }
