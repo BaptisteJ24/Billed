@@ -3,16 +3,17 @@
  */
 
 import { screen, waitFor, fireEvent } from "@testing-library/dom"
-import { ROUTES_PATH } from "../constants/routes.js"
+import { ROUTES, ROUTES_PATH } from "../constants/routes.js"
 import { localStorageMock } from "../__mocks__/localStorage.js";
-
 import mockStore from "../__mocks__/store.js";
 import router from "../app/Router.js";
 import NewBillUI from "../views/NewBillUI.js"
 import NewBill from "../containers/NewBill.js"
+
 jest.mock("../app/Store", () => mockStore)
 
 window.alert = jest.fn()
+let onNavigate = jest.fn()
 
 describe("Given I am connected as an employee", () => {
   Object.defineProperty(window, 'localStorage', { value: localStorageMock })
@@ -73,11 +74,11 @@ describe("Given I am connected as an employee", () => {
 })
 
 // test d'intégration POST
-
 describe("Given I am a user connected as Employee", () => {
   Object.defineProperty(window, 'localStorage', { value: localStorageMock })
   window.localStorage.setItem('user', JSON.stringify({
-    type: 'Employee'
+    type: 'Employee',
+    email: 'e@e'
   }))
   describe("When I create a new bill", () => {
     const root = document.createElement("div")
@@ -89,7 +90,9 @@ describe("Given I am a user connected as Employee", () => {
     document.body.innerHTML = html
 
     test("Then create bill to mock API", async () => {
-      const postSpy = jest.spyOn(mockStore.bills(), "create")
+
+      const createSpy = jest.spyOn(mockStore.bills(), "create")
+      const updateSpy = jest.spyOn(mockStore.bills(), "update")
 
       const newBill = new NewBill({ document, onNavigate, store: mockStore, localStorage: window.localStorage })
 
@@ -101,13 +104,13 @@ describe("Given I am a user connected as Employee", () => {
         vat: "10",
         pct: 20,
         commentary: "test",
-        fileUrl: "https://localhost:5678/tests/fixture-cat.jpg",
-        fileName: "fixture-cat.jpg",
+        fileUrl: "https://localhost:8080/src/assets/images/facturefreemobile.jpg",
+        fileName: "facturefreemobile.jpg",
         status: "pending",
-        email: "employee@test.ltd"
+        email: "e@e"
       }
 
-      // Load bills form field with myNewBill
+      // Load bill form field with myNewBill
       screen.getByTestId("expense-type").value = myNewBill.type
       screen.getByTestId("expense-name").value = myNewBill.name
       screen.getByTestId("datepicker").value = myNewBill.date
@@ -115,29 +118,85 @@ describe("Given I am a user connected as Employee", () => {
       screen.getByTestId("vat").value = myNewBill.vat
       screen.getByTestId("pct").value = myNewBill.pct
       screen.getByTestId("commentary").value = myNewBill.commentary
-      newBill.fileUrl = myNewBill.fileUrl
-      newBill.fileName = myNewBill.fileName
+
+
+      // Load file
+      const handleChangeFile = jest.fn(newBill.handleChangeFile)
+      const file = new File([myNewBill.fileName], myNewBill.fileName, { type: 'image/jpg' })
+      const fileInput = screen.getByTestId("file")
+      fileInput.addEventListener("change", handleChangeFile)
+      fireEvent.change(fileInput, { target: { files: [file] } })
+      await waitFor(() => {
+        expect(handleChangeFile).toHaveBeenCalled()
+        expect(fileInput.files[0].name).toBe(file.name)
+      })
 
       // Submit form
       const form = screen.getByTestId("form-new-bill")
       const handleSubmit = jest.fn(newBill.handleSubmit)
       form.addEventListener("submit", handleSubmit)
-      fireEvent.submit(form)
+      await waitFor(() => fireEvent.submit(form))
+
+      await waitFor(() => Promise.resolve())
+
+      expect(newBill.store.bills().create).toHaveBeenCalled()
+      await waitFor(() => Promise.resolve())
+
+      expect(newBill.store.bills().update).toHaveBeenCalled()
 
       // Check if the bill is posted
       await waitFor(() => {
         expect(handleSubmit).toHaveBeenCalled()
-        expect(postSpy).toHaveBeenCalled()
+        expect(createSpy).toHaveBeenCalled()
+        expect(updateSpy).toHaveBeenCalled()
+      })
+      expect(newBill.onNavigate).toHaveBeenCalledWith(ROUTES_PATH['Bills']);
+    })
+
+
+    describe("When an error occurs on API", () => {
+      beforeEach(async () => {
+        jest.spyOn(mockStore, "bills")
+        Object.defineProperty(
+          window,
+          'localStorage',
+          { value: localStorageMock }
+        )
+        window.localStorage.setItem('user', JSON.stringify({
+          type: 'Employee',
+          email: "e@e"
+        }))
+        const root = document.createElement("div")
+        root.setAttribute("id", "root")
+        document.body.appendChild(root)
+        router()
+      })
+
+      test("Then fetches bills from an API and fails with 404 message error", async () => {
+        mockStore.bills.mockImplementationOnce(() => {
+          return {
+            create: () => {
+              return Promise.reject(new Error("Erreur 404"))
+            }
+          }
+        })
+
       })
 
 
-    })
-    describe("When an error occurs on API", () => {
-      test("post bill to an API and fails with 404 message error", async () => {
-        const postSpy = jest.spyOn(console, "error")
-        const newBill = new NewBill({ document, onNavigate, store: mockStore, localStorage: window.localStorage })
+      test("Then POST bill to mock API fails with 500 error", async () => {
+        mockStore.bills.mockImplementationOnce(() => {
+          return {
+            create: () => {
+              return Promise.reject(new Error("Erreur 500"))
+            }
+          }
+        })
 
       })
     })
   })
 })
+
+
+
