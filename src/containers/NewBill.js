@@ -66,6 +66,8 @@ export default class NewBill {
     }
   }
 
+
+  // not need to cover this function by tests
   createBill = async (bill) => {
     const formData = new FormData()
     formData.append('file', this.file.files[0])

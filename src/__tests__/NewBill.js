@@ -3,7 +3,7 @@
  */
 
 import { screen, waitFor, fireEvent } from "@testing-library/dom"
-import { ROUTES, ROUTES_PATH } from "../constants/routes.js"
+import { ROUTES_PATH } from "../constants/routes.js"
 import { localStorageMock } from "../__mocks__/localStorage.js";
 import mockStore from "../__mocks__/store.js";
 import router from "../app/Router.js";
@@ -73,7 +73,7 @@ describe("Given I am connected as an employee", () => {
   })
 })
 
-// test d'intégration POST
+// Integration test POST
 describe("Given I am a user connected as Employee", () => {
   Object.defineProperty(window, 'localStorage', { value: localStorageMock })
   window.localStorage.setItem('user', JSON.stringify({
@@ -90,6 +90,7 @@ describe("Given I am a user connected as Employee", () => {
     document.body.innerHTML = html
 
     test("Then create bill to mock API", async () => {
+      let listBills = await mockStore.bills().list()
 
       const createSpy = jest.spyOn(mockStore.bills(), "create")
       const updateSpy = jest.spyOn(mockStore.bills(), "update")
@@ -137,63 +138,67 @@ describe("Given I am a user connected as Employee", () => {
       form.addEventListener("submit", handleSubmit)
       await waitFor(() => fireEvent.submit(form))
 
-      await waitFor(() => Promise.resolve())
-
-      expect(newBill.store.bills().create).toHaveBeenCalled()
-      await waitFor(() => Promise.resolve())
-
-      expect(newBill.store.bills().update).toHaveBeenCalled()
-
       // Check if the bill is posted
       await waitFor(() => {
         expect(handleSubmit).toHaveBeenCalled()
         expect(createSpy).toHaveBeenCalled()
-        expect(updateSpy).toHaveBeenCalled()
       })
+      let result = await createSpy(myNewBill)
+      expect(result).toEqual({fileUrl :'https://localhost:8080/src/assets/images/facturefreemobile.jpg', key:'1234'})
+      await waitFor(() => expect(updateSpy).toHaveBeenCalled())
+      let result2 = await updateSpy(myNewBill)
+      expect(result2.fileUrl).not.toBe(listBills[0].fileUrl)
       expect(newBill.onNavigate).toHaveBeenCalledWith(ROUTES_PATH['Bills']);
     })
 
-
-    describe("When an error occurs on API", () => {
-      beforeEach(async () => {
+    describe("An error occurs on API", () => {
+      test("Then post new bill to mock API and fails with 404 message error", async () => {
         jest.spyOn(mockStore, "bills")
-        Object.defineProperty(
-          window,
-          'localStorage',
-          { value: localStorageMock }
-        )
-        window.localStorage.setItem('user', JSON.stringify({
-          type: 'Employee',
-          email: "e@e"
-        }))
-        const root = document.createElement("div")
-        root.setAttribute("id", "root")
-        document.body.appendChild(root)
-        router()
-      })
+        jest.spyOn(console, 'error').mockImplementation(() => { })
 
-      test("Then fetches bills from an API and fails with 404 message error", async () => {
-        mockStore.bills.mockImplementationOnce(() => {
+        mockStore.bills.mockImplementation(() => {
           return {
             create: () => {
               return Promise.reject(new Error("Erreur 404"))
-            }
+            },
           }
         })
 
+        const newBill = new NewBill({ document, onNavigate, store: mockStore, localStorage: window.localStorage })
+        const handleSubmit = jest.fn(newBill.handleSubmit)
+        const form = screen.getByTestId("form-new-bill")
+        form.addEventListener("submit", handleSubmit)
+        await waitFor(() => fireEvent.submit(form))
+
+        await new Promise(process.nextTick)
+        expect(console.error).toHaveBeenCalledWith(new Error("Erreur 404"))
       })
 
+      test("Then post new bill to mock API and fails with 500 message error", async () => {
+        jest.spyOn(mockStore, "bills")
+        jest.spyOn(console, 'error').mockImplementation(() => { })
 
-      test("Then POST bill to mock API fails with 500 error", async () => {
-        mockStore.bills.mockImplementationOnce(() => {
+        mockStore.bills.mockImplementation(() => {
           return {
             create: () => {
+              return Promise.resolve({ fileUrl: 'https://localhost:8080/src/assets/images/facturefreemobile.jpg', key: '1234' })
+            },
+            update: () => {
               return Promise.reject(new Error("Erreur 500"))
             }
           }
         })
 
+        const newBill = new NewBill({ document, onNavigate, store: mockStore, localStorage: window.localStorage })
+        const handleSubmit = jest.fn(newBill.handleSubmit)
+        const form = screen.getByTestId("form-new-bill")
+        form.addEventListener("submit", handleSubmit)
+        await waitFor(() => fireEvent.submit(form))
+
+        await new Promise(process.nextTick)
+        expect(console.error).toHaveBeenCalledWith(new Error("Erreur 500"))
       })
+
     })
   })
 })
