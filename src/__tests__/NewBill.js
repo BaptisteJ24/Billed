@@ -80,7 +80,7 @@ describe("Given I am a user connected as Employee", () => {
     type: 'Employee',
     email: 'e@e'
   }))
-  describe("When I create a new bill", () => {
+  describe("When I want to create a new bill", () => {
     const root = document.createElement("div")
     root.setAttribute("id", "root")
     document.body.innerHTML = root.outerHTML

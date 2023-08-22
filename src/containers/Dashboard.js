@@ -135,6 +135,8 @@ export default class {
     if (this.counter === undefined || this.index !== index) this.counter = 0
     if (this.index === undefined || this.index !== index) this.index = index
 
+    // if the counter is pair and a list is open, counter is incremented to avoid a bug.
+    // bug : if you click on a list, then you click on another list, we have to click two times on the first list to close it.
     if(this.counter % 2 === 0 && $(`#arrow-icon${this.index}`).attr('data-open') === 'true') {
       this.counter ++
     }
@@ -156,6 +158,10 @@ export default class {
     bills.forEach(bill => {
       $(`#status-bills-container${index} #open-bill${bill.id}`).click((e) => this.handleEditTicket(e, bill, bills))
     })
+
+    /* bills.forEach(bill => {
+      $(`#open-bill${bill.id}`).click((e) => this.handleEditTicket(e, bill, bills))
+    })*/
 
     return bills
   }

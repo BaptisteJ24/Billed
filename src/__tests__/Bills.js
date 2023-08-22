@@ -41,7 +41,7 @@ describe("Given I am connected as an employee", () => {
       const dates = screen
         .getAllByTestId('bill-date')
         .filter(el => /^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])$/.test(el.getAttribute('data-date')))
-        .map(a => a.innerHTML)
+        .map(a => a.getAttribute('data-date'))
 
       const antiChrono = (a, b) => ((a < b) ? 1 : -1)
       const datesSorted = [...dates].sort(antiChrono)

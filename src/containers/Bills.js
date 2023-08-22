@@ -36,7 +36,7 @@ export default class {
             .map(doc => {
                 return {
                   ...doc,
-                  date: doc.date,
+                  date: doc.date, // date: formatDate(doc.date),
                   status: doc.status
                 }
             })
